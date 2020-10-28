@@ -36,8 +36,8 @@
  */
 #pragma once
 
-#include "cutlass/arch/arch.h"
 #include "cutlass/cutlass.h"
+#include "cutlass/arch/arch.h"
 #include "cutlass/device_kernel.h"
 #include "cutlass/numeric_types.h"
 
