@@ -35,4 +35,5 @@ cutlass_test_unit_add_executable(
   matrix_coord.cu
   numeric_conversion.cu
   functional.cu
+  fast_divmod.cu
   )

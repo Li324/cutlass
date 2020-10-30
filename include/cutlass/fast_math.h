@@ -206,7 +206,7 @@ void fast_divmod(int& quo, int& rem, int src, int div, unsigned int mul,
     // Use IMUL.HI if div != 1, else simply copy the source.
     quo = (div != 1) ? __umulhi(src, mul) >> shr : src;
 #else
-    quo = int((div != 1) ? int(src * mul) >> shr : src);
+    quo = int((div != 1) ? int(((int64_t)src * mul) >> 32) >> shr : src);
 #endif
 
     // The remainder.
@@ -221,7 +221,7 @@ void fast_divmod(int& quo, int64_t& rem, int64_t src, int div, unsigned int mul,
     // Use IMUL.HI if div != 1, else simply copy the source.
     quo = (div != 1) ? __umulhi(src, mul) >> shr : src;
 #else
-    quo = int((div != 1) ? (src * mul) >> shr : src);
+    quo = int((div != 1) ? ((src * mul) >> 32) >> shr : src);
 #endif
     // The remainder.
     rem = src - (quo * div);
