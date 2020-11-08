@@ -500,5 +500,94 @@ public:
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
+/// Mapping function for 5-D NKCxRSx tensors.
+template<int Interleave>
+class TensorNKCxRSx {
+public:
+    /// Interleaving quantity
+    static int const kInterleave = Interleave;
+
+    /// Logical rank of tensor
+    static int const kRank = 5;
+
+    /// Rank of stride vector
+    static int const kStrideRank = 4;
+
+    /// Index type used for coordinates
+    using Index = int32_t;
+
+    /// Long index type used for offsets
+    using LongIndex = int64_t;
+
+    /// Logical coordinate (n, d(k), h(c), w(r), c(s))
+    using TensorCoord = Tensor5DCoord;
+
+    /// Stride vector
+    using Stride = Coord<kStrideRank>;
+
+private:
+    //
+    // Data members
+    //
+
+    /// Stride data member - [w, hw, chw, kchw]
+    Stride stride_;
+
+public:
+    //
+    // Methods
+    //
+
+    /// Constructor
+    CUTLASS_HOST_DEVICE
+    TensorNKCxRSx(Stride const& stride = Stride(0)) : stride_(stride) {}
+
+    /// Constructor
+    CUTLASS_HOST_DEVICE
+    TensorNKCxRSx(typename Stride::Index w, typename Stride::Index hw,
+                typename Stride::Index chw, typename Stride::Index kchw)
+            : stride_(make_Coord(w, hw, chw, kchw)) {}
+
+    /// Helper returns a layout to a tightly packed NHWC tensor.
+    CUTLASS_HOST_DEVICE
+    static TensorNKCxRSx packed(TensorCoord const& extent) {
+        return TensorNDHWC(
+                make_Coord(kInterleave * extent.w(),
+                           kInterleave * extent.w() * extent.h(),
+                           extent.h() * extent.w() * extent.c(),
+                           extent.d() * extent.h() * extent.w() * extent.c()));
+    }
+
+    /// Returns the offset of a coordinate (n, d, h, w, c) in linear memory.
+    CUTLASS_HOST_DEVICE
+    LongIndex operator()(TensorCoord const& coord) const {
+        Index c_minor = (coord.c() % kInterleave);
+        Index c_major = (coord.c() / kInterleave);
+
+        return c_minor + LongIndex(kInterleave * coord.w()) +
+               LongIndex(stride_[0] * coord.h()) +
+               LongIndex(stride_[1] * c_major) +
+               LongIndex(stride_[2] * coord.d()) +
+               LongIndex(stride_[3] * coord.n());
+    }
+
+    /// Returns the stride of the layout
+    CUTLASS_HOST_DEVICE
+    Stride stride() const { return stride_; }
+
+    /// Returns the stride of the layout
+    CUTLASS_HOST_DEVICE
+    Stride& stride() { return stride_; }
+
+    /// Compute the number of contiguous elements needed to store a tensor with
+    /// the given size
+    CUTLASS_HOST_DEVICE
+    LongIndex capacity(TensorCoord const& extent) const {
+        return extent.n() * stride_[3];
+    }
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
 }  // namespace layout
 }  // namespace cutlass
