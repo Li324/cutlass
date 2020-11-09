@@ -54,7 +54,7 @@
 
 #include "testbed.h"
 
-#define RUN_CONVOLUTION                                                        \
+#define RUN_CONVOLUTION(stage)                                                 \
     do {                                                                       \
         using ElementOutput = int8_t;                                          \
         using ElementAccumulator = int32_t;                                    \
@@ -75,7 +75,7 @@
                 cutlass::convolution::threadblock::                            \
                         ConvolutionNCxHWxThreadblockSwizzle<                   \
                                 cutlass::convolution::ConvType::kConvolution>, \
-                2>;                                                            \
+                stage>;                                                        \
         EXPECT_TRUE(                                                           \
                 test::convolution::device::TestAllConvolution<Convolution>()); \
     } while (0)
@@ -85,49 +85,57 @@
 TEST(SM61_Device_Convolution_s8_s8_NC4HW4_simt_op_dp4a, 128x128x32_32x64x32) {
     using ThreadBlockShape = cutlass::gemm::GemmShape<128, 128, 32>;
     using WarpShape = cutlass::gemm::GemmShape<32, 64, 32>;
-    RUN_CONVOLUTION;
+    RUN_CONVOLUTION(1);
+    RUN_CONVOLUTION(2);
 }
 
 TEST(SM61_Device_Convolution_s8_s8_NC4HW4_simt_op_dp4a, 64x128x32_32x64x32) {
     using ThreadBlockShape = cutlass::gemm::GemmShape<64, 128, 32>;
     using WarpShape = cutlass::gemm::GemmShape<32, 64, 32>;
-    RUN_CONVOLUTION;
+    RUN_CONVOLUTION(1);
+    RUN_CONVOLUTION(2);
 }
 
 TEST(SM61_Device_Convolution_s8_s8_NC4HW4_simt_op_dp4a, 32x128x32_32x64x32) {
     using ThreadBlockShape = cutlass::gemm::GemmShape<32, 128, 32>;
     using WarpShape = cutlass::gemm::GemmShape<32, 64, 32>;
-    RUN_CONVOLUTION;
+    RUN_CONVOLUTION(1);
+    RUN_CONVOLUTION(2);
 }
 
 TEST(SM61_Device_Convolution_s8_s8_NC4HW4_simt_op_dp4a, 128x64x32_32x64x32) {
     using ThreadBlockShape = cutlass::gemm::GemmShape<128, 64, 32>;
     using WarpShape = cutlass::gemm::GemmShape<32, 64, 32>;
-    RUN_CONVOLUTION;
+    RUN_CONVOLUTION(1);
+    RUN_CONVOLUTION(2);
 }
 
 TEST(SM61_Device_Convolution_s8_s8_NC4HW4_simt_op_dp4a, 32x64x32_32x64x32) {
     using ThreadBlockShape = cutlass::gemm::GemmShape<32, 64, 32>;
     using WarpShape = cutlass::gemm::GemmShape<32, 64, 32>;
-    RUN_CONVOLUTION;
+    RUN_CONVOLUTION(1);
+    RUN_CONVOLUTION(2);
 }
 
 TEST(SM61_Device_Convolution_s8_s8_NC4HW4_simt_op_dp4a, 128x32x32_64x32x32) {
     using ThreadBlockShape = cutlass::gemm::GemmShape<128, 32, 32>;
     using WarpShape = cutlass::gemm::GemmShape<64, 32, 32>;
-    RUN_CONVOLUTION;
+    RUN_CONVOLUTION(1);
+    RUN_CONVOLUTION(2);
 }
 
 TEST(SM61_Device_Convolution_s8_s8_NC4HW4_simt_op_dp4a, 64x32x32_64x32x32) {
     using ThreadBlockShape = cutlass::gemm::GemmShape<64, 32, 32>;
     using WarpShape = cutlass::gemm::GemmShape<64, 32, 32>;
-    RUN_CONVOLUTION;
+    RUN_CONVOLUTION(1);
+    RUN_CONVOLUTION(2);
 }
 
 TEST(SM61_Device_Convolution_s8_s8_NC4HW4_simt_op_dp4a, 32x32x32_32x32x32) {
     using ThreadBlockShape = cutlass::gemm::GemmShape<32, 32, 32>;
     using WarpShape = cutlass::gemm::GemmShape<32, 32, 32>;
-    RUN_CONVOLUTION;
+    RUN_CONVOLUTION(1);
+    RUN_CONVOLUTION(2);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

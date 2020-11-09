@@ -161,6 +161,71 @@ struct DefaultMma<int8_t, layout::TensorCxRSKx<4>, kAlignmentSrc, int8_t,
             typename MmaCore::MmaPolicy>;
 };
 
+/// Specialization for SIMT IDP4A Kernels with TensorCxRSKx<4> tensors for single stage
+template <
+        /// Access granularity of Src Tensor in units of elements
+        int kAlignmentSrc,
+        /// Access granularity of Filter Tensor in units of elements
+        int kAlignmentFilter,
+        /// Element type for internal accumulation
+        typename ElementAccumulator,
+        /// Tag indicating architecture to tune for
+        typename ArchTag,
+        /// Threadblock-level tile size (concept: gemm::GemmShape)
+        typename ThreadblockShape,
+        /// Warp-level tile size (concept: gemm::GemmShape)
+        typename WarpShape,
+        /// Operation performed by GEMM
+        typename Operator>
+struct DefaultMma<int8_t, layout::TensorCxRSKx<4>, kAlignmentSrc, int8_t,
+                  layout::TensorCxRSKx<4>, kAlignmentFilter, ElementAccumulator,
+                  layout::TensorCxRSKx<4>, arch::OpClassSimt, ArchTag,
+                  ThreadblockShape, WarpShape, gemm::GemmShape<1, 1, 4>, 1,
+                  Operator, true> {
+    using InstructionShape = gemm::GemmShape<1, 1, 4>;
+    using ElementSrc = int8_t;
+    using LayoutSrc = layout::TensorCxRSKx<4>;
+    using ElementFilter = int8_t;
+    using LayoutFilter = layout::TensorCxRSKx<4>;
+    using LayoutDst = layout::TensorCxRSKx<4>;
+    using OperatorClass = arch::OpClassSimt;
+
+    // Define the MmaCore components
+    using MmaCore = typename cutlass::convolution::threadblock::DefaultMmaCore<
+            ThreadblockShape, WarpShape, InstructionShape, ElementSrc,
+            LayoutSrc, kAlignmentSrc, ElementFilter, LayoutFilter,
+            kAlignmentFilter, ElementAccumulator, LayoutDst, OperatorClass, 1,
+            Operator, true>;
+
+    // Define iterators over tiles from the Src Tensor operand
+    using IteratorSrc = cutlass::transform::threadblock::PredicatedTileIterator<
+            cutlass::MatrixShape<MmaCore::Shape::kK, MmaCore::Shape::kN>,
+            ElementSrc, LayoutSrc, 1, typename MmaCore::IteratorThreadMapSrc,
+            MmaCore::IteratorThreadMapSrc::kElementsPerAccess,
+            cutlass::transform::threadblock::TileMap<
+                    LayoutSrc, cutlass::transform::threadblock::TileMapType::
+                                       kRow2C_Col2N>>;
+
+    // Define iterators over tiles from the Filter Tensor operand
+    using IteratorFilter =
+            cutlass::transform::threadblock::PredicatedTileIterator<
+                    cutlass::MatrixShape<MmaCore::Shape::kK,
+                                         MmaCore::Shape::kM>,
+                    ElementFilter, LayoutFilter, 1,
+                    typename MmaCore::IteratorThreadMapFilter,
+                    MmaCore::IteratorThreadMapFilter::kElementsPerAccess,
+                    cutlass::transform::threadblock::TileMap<
+                            LayoutFilter, cutlass::transform::threadblock::
+                                                  TileMapType::kRow2C_Col2N>>;
+
+    // Define the threadblock-scoped pipelined matrix multiply
+    using ThreadblockMma = cutlass::convolution::threadblock::MmaSingleStage<
+            typename MmaCore::Shape, IteratorSrc,
+            typename MmaCore::SmemIteratorSrc, IteratorFilter,
+            typename MmaCore::SmemIteratorFilter, ElementAccumulator, LayoutDst,
+            typename MmaCore::MmaPolicy>;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Specialization for SIMT IDP4A Kernels with
@@ -233,6 +298,77 @@ struct DefaultMma<int8_t, layout::TensorNCxHWx<4>, kAlignmentSrc, int8_t,
                     LayoutDst, typename MmaCore::MmaPolicy>;
 };
 
+/// Specialization for SIMT IDP4A Kernels with
+/// Input Tensor: layout::NCxHWx<4>
+/// Filter Tensor: layout::CxRSKx<4>
+/// Output Tensor: layout::NCxHWx<4>
+/// single stage
+template <
+        /// Access granularity of Src Tensor in units of elements
+        int kAlignmentSrc,
+        /// Access granularity of Filter Tensor in units of elements
+        int kAlignmentFilter,
+        /// Element type for internal accumulation
+        typename ElementAccumulator,
+        /// Tag indicating architecture to tune for
+        typename ArchTag,
+        /// Threadblock-level tile size (concept: gemm::GemmShape)
+        typename ThreadblockShape,
+        /// Warp-level tile size (concept: gemm::GemmShape)
+        typename WarpShape,
+        /// Operation performed by GEMM
+        typename Operator, bool NeedLoadFromConstMem>
+struct DefaultMma<int8_t, layout::TensorNCxHWx<4>, kAlignmentSrc, int8_t,
+                  layout::TensorCxRSKx<4>, kAlignmentFilter, ElementAccumulator,
+                  layout::TensorNCxHWx<4>, arch::OpClassSimt, ArchTag,
+                  ThreadblockShape, WarpShape, gemm::GemmShape<1, 1, 4>, 1,
+                  Operator, true, NeedLoadFromConstMem> {
+    using InstructionShape = gemm::GemmShape<1, 1, 4>;
+    using ElementSrc = int8_t;
+    using LayoutSrc = layout::TensorNCxHWx<4>;
+    using ElementFilter = int8_t;
+    using LayoutFilter = layout::TensorCxRSKx<4>;
+    using LayoutDst = layout::TensorNCxHWx<4>;
+    using OperatorClass = arch::OpClassSimt;
+
+    // Define the MmaCore components
+    using MmaCore = typename cutlass::convolution::threadblock::DefaultMmaCore<
+            ThreadblockShape, WarpShape, InstructionShape, ElementSrc,
+            LayoutSrc, kAlignmentSrc, ElementFilter, LayoutFilter,
+            kAlignmentFilter, ElementAccumulator, LayoutDst, OperatorClass, 1,
+            Operator, true>;
+
+    // Define iterators over tiles from the Src Tensor operand
+    using IteratorSrc = cutlass::transform::threadblock::PredicatedTileIterator<
+            cutlass::MatrixShape<MmaCore::Shape::kK, MmaCore::Shape::kN>,
+            ElementSrc, LayoutSrc, 1, typename MmaCore::IteratorThreadMapSrc,
+            MmaCore::IteratorThreadMapSrc::kElementsPerAccess,
+            cutlass::transform::threadblock::TileMap<
+                    LayoutSrc, cutlass::transform::threadblock::TileMapType::
+                                       kRow2C_Col2NHW>,
+            NeedLoadFromConstMem>;
+
+    // Define iterators over tiles from the Filter Tensor operand
+    using IteratorFilter =
+            cutlass::transform::threadblock::PredicatedTileIterator<
+                    cutlass::MatrixShape<MmaCore::Shape::kK,
+                                         MmaCore::Shape::kM>,
+                    ElementFilter, LayoutFilter, 1,
+                    typename MmaCore::IteratorThreadMapFilter,
+                    MmaCore::IteratorThreadMapFilter::kElementsPerAccess,
+                    cutlass::transform::threadblock::TileMap<
+                            LayoutFilter, cutlass::transform::threadblock::
+                                                  TileMapType::kRow2CHW_Col2N>>;
+
+    // Define the threadblock-scoped pipelined matrix multiply
+    using ThreadblockMma =
+            cutlass::convolution::threadblock::MmaPrecomputeOffsetSingleStage<
+                    typename MmaCore::Shape, IteratorSrc,
+                    typename MmaCore::SmemIteratorSrc, IteratorFilter,
+                    typename MmaCore::SmemIteratorFilter, ElementAccumulator,
+                    LayoutDst, typename MmaCore::MmaPolicy>;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Specialization for SIMT IDP4A Kernels with
@@ -299,6 +435,77 @@ struct DefaultMma<int8_t, layout::TensorNCxHWx<4>, kAlignmentSrc, int8_t,
     // Define the threadblock-scoped pipelined matrix multiply
     using ThreadblockMma =
             cutlass::convolution::threadblock::MmaPrecomputeOffset<
+                    typename MmaCore::Shape, IteratorSrc,
+                    typename MmaCore::SmemIteratorSrc, IteratorFilter,
+                    typename MmaCore::SmemIteratorFilter, ElementAccumulator,
+                    LayoutDst, typename MmaCore::MmaPolicy>;
+};
+
+/// Specialization for SIMT IDP4A Kernels with
+/// Input Tensor: layout::NCxHWx<4>
+/// Filter Tensor: layout::CxRSKx<4>
+/// Output Tensor: layout::NCxHWx<32>
+/// single stage
+template <
+        /// Access granularity of Src Tensor in units of elements
+        int kAlignmentSrc,
+        /// Access granularity of Filter Tensor in units of elements
+        int kAlignmentFilter,
+        /// Element type for internal accumulation
+        typename ElementAccumulator,
+        /// Tag indicating architecture to tune for
+        typename ArchTag,
+        /// Threadblock-level tile size (concept: gemm::GemmShape)
+        typename ThreadblockShape,
+        /// Warp-level tile size (concept: gemm::GemmShape)
+        typename WarpShape,
+        /// Operation performed by GEMM
+        typename Operator, bool NeedLoadFromConstMem>
+struct DefaultMma<int8_t, layout::TensorNCxHWx<4>, kAlignmentSrc, int8_t,
+                  layout::TensorCxRSKx<4>, kAlignmentFilter, ElementAccumulator,
+                  layout::TensorNCxHWx<32>, arch::OpClassSimt, ArchTag,
+                  ThreadblockShape, WarpShape, gemm::GemmShape<1, 1, 4>, 1,
+                  Operator, true, NeedLoadFromConstMem> {
+    using InstructionShape = gemm::GemmShape<1, 1, 4>;
+    using ElementSrc = int8_t;
+    using LayoutSrc = layout::TensorNCxHWx<4>;
+    using ElementFilter = int8_t;
+    using LayoutFilter = layout::TensorCxRSKx<4>;
+    using LayoutDst = layout::TensorNCxHWx<32>;
+    using OperatorClass = arch::OpClassSimt;
+
+    // Define the MmaCore components
+    using MmaCore = typename cutlass::convolution::threadblock::DefaultMmaCore<
+            ThreadblockShape, WarpShape, InstructionShape, ElementSrc,
+            LayoutSrc, kAlignmentSrc, ElementFilter, LayoutFilter,
+            kAlignmentFilter, ElementAccumulator, LayoutDst, OperatorClass, 1,
+            Operator, true>;
+
+    // Define iterators over tiles from the Src Tensor operand
+    using IteratorSrc = cutlass::transform::threadblock::PredicatedTileIterator<
+            cutlass::MatrixShape<MmaCore::Shape::kK, MmaCore::Shape::kN>,
+            ElementSrc, LayoutSrc, 1, typename MmaCore::IteratorThreadMapSrc,
+            MmaCore::IteratorThreadMapSrc::kElementsPerAccess,
+            cutlass::transform::threadblock::TileMap<
+                    LayoutSrc, cutlass::transform::threadblock::TileMapType::
+                                       kRow2C_Col2NHW>,
+            NeedLoadFromConstMem>;
+
+    // Define iterators over tiles from the Filter Tensor operand
+    using IteratorFilter =
+            cutlass::transform::threadblock::PredicatedTileIterator<
+                    cutlass::MatrixShape<MmaCore::Shape::kK,
+                                         MmaCore::Shape::kM>,
+                    ElementFilter, LayoutFilter, 1,
+                    typename MmaCore::IteratorThreadMapFilter,
+                    MmaCore::IteratorThreadMapFilter::kElementsPerAccess,
+                    cutlass::transform::threadblock::TileMap<
+                            LayoutFilter, cutlass::transform::threadblock::
+                                                  TileMapType::kRow2CHW_Col2N>>;
+
+    // Define the threadblock-scoped pipelined matrix multiply
+    using ThreadblockMma =
+            cutlass::convolution::threadblock::MmaPrecomputeOffsetSingleStage<
                     typename MmaCore::Shape, IteratorSrc,
                     typename MmaCore::SmemIteratorSrc, IteratorFilter,
                     typename MmaCore::SmemIteratorFilter, ElementAccumulator,
