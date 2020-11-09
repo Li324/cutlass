@@ -146,6 +146,8 @@ template <
         typename EpilogueOutputOp,
         /// Threadblock-level swizzling operator
         typename ThreadblockSwizzle,
+        /// Number of stages used in the pipelined mainloop
+        int Stages,
         /// Operation performed by GEMM
         typename Operator>
 struct DefaultConvolution<int8_t, layout::TensorCxRSKx<4>, kAlignmentSrc,
@@ -153,7 +155,7 @@ struct DefaultConvolution<int8_t, layout::TensorCxRSKx<4>, kAlignmentSrc,
                           ElementDst, LayoutDst, ElementAccumulator,
                           ConvolutionType, arch::OpClassSimt, ArchTag,
                           ThreadblockShape, WarpShape, gemm::GemmShape<1, 1, 4>,
-                          EpilogueOutputOp, ThreadblockSwizzle, 2, Operator> {
+                          EpilogueOutputOp, ThreadblockSwizzle, Stages, Operator> {
     using InstructionShape = gemm::GemmShape<1, 1, 4>;
     using ElementSrc = int8_t;
     using ElementFilter = int8_t;
@@ -165,7 +167,7 @@ struct DefaultConvolution<int8_t, layout::TensorCxRSKx<4>, kAlignmentSrc,
     using Mma = typename cutlass::convolution::threadblock::DefaultMma<
             ElementSrc, LayoutSrc, kAlignmentSrc, ElementFilter, LayoutFilter,
             kAlignmentFilter, ElementAccumulator, LayoutDst, arch::OpClassSimt,
-            arch::Sm50, ThreadblockShape, WarpShape, InstructionShape, 2,
+            arch::Sm50, ThreadblockShape, WarpShape, InstructionShape, Stages,
             Operator, true>::ThreadblockMma;
 
     static int const kEpilogueElementsPerAccess = 4;
@@ -207,6 +209,8 @@ template <int kAlignmentSrc,
           typename EpilogueOutputOp,
           /// Threadblock-level swizzling operator
           typename ThreadblockSwizzle,
+          /// Number of stages used in the pipelined mainloop
+          int Stages,
           /// Operation performed by GEMM
           typename Operator, bool NeedLoadFromConstMem>
 struct DefaultConvolution<
@@ -214,7 +218,7 @@ struct DefaultConvolution<
         layout::TensorCxRSKx<4>, kAlignmentFilter, ElementDst, LayoutDst,
         ElementAccumulator, ConvolutionType, arch::OpClassSimt, ArchTag,
         ThreadblockShape, WarpShape, gemm::GemmShape<1, 1, 4>, EpilogueOutputOp,
-        ThreadblockSwizzle, 2, Operator, NeedLoadFromConstMem> {
+        ThreadblockSwizzle, Stages, Operator, NeedLoadFromConstMem> {
     using InstructionShape = gemm::GemmShape<1, 1, 4>;
     using ElementSrc = int8_t;
     using ElementFilter = int8_t;
@@ -226,7 +230,7 @@ struct DefaultConvolution<
     using Mma = typename cutlass::convolution::threadblock::DefaultMma<
             ElementSrc, LayoutSrc, kAlignmentSrc, ElementFilter, LayoutFilter,
             kAlignmentFilter, ElementAccumulator, LayoutDst, arch::OpClassSimt,
-            arch::Sm50, ThreadblockShape, WarpShape, InstructionShape, 2,
+            arch::Sm50, ThreadblockShape, WarpShape, InstructionShape, Stages,
             Operator, true, NeedLoadFromConstMem>::ThreadblockMma;
 
     static int const kEpilogueElementsPerAccess = 4;

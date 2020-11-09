@@ -52,6 +52,7 @@
 
 #include "cutlass/arch/cache_operation.h"
 #include "cutlass/convolution/threadblock/mma_pipelined.h"
+#include "cutlass/convolution/threadblock/mma_singlestage.h"
 #include "cutlass/convolution/threadblock/mma_precompute_offset.h"
 #include "cutlass/gemm/warp/mma.h"
 
