@@ -29,6 +29,8 @@ cutlass_test_unit_add_executable(
   simt_int8_chwn4_iconv_sm61.cu
   simt_int8_chwn4_iconv_sm61_perf.cu
   simt_int8_nchw4_iconv_sm61.cu
+  simt_int8_s8nchw4_s8nchw4_f32nchw_iconv_sm61.cu
+  simt_int8_s8nchw4_s8nchw4_f32nchw_iconv_sm61_perf.cu
   simt_int8_nchw4_iconv_sm61_perf.cu
   simt_int8_s8nchw4_s8nchw4_s8nchw32_iconv_sm61_perf.cu
   simt_int8_s8nchw4_s8nchw4_s8nchw32_iconv_sm61.cu

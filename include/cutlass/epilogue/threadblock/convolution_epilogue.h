@@ -168,9 +168,10 @@ public:
                     OutputTileIterator::Fragment::kElements,
             "Mismatch between shared load iterator and output tile iterator.");
 
-    static_assert(
-            !(OutputTileIterator::kElementsPerAccess % 4),
-            "OutputTileIterator::kElementsPerAccess must be a multiple of 4.");
+    static_assert((!(OutputTileIterator::kElementsPerAccess % 4) ||
+                   OutputTileIterator::kElementsPerAccess == 1),
+                  "OutputTileIterator::kElementsPerAccess must be 1 or a "
+                  "multiple of 4.");
 
     static_assert(!(OutputTileIterator::Fragment::kElements %
                     OutputTileIterator::kElementsPerAccess),

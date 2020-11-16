@@ -58,16 +58,18 @@
 
 #include "cutlass/transform/threadblock/regular_tile_iterator_pitch_linear.h"
 
+#include "cutlass/epilogue/threadblock/default_thread_map_simt.h"
 #include "cutlass/epilogue/threadblock/convolution_thread_map_simt.h"
 #include "cutlass/epilogue/warp/fragment_iterator_simt.h"
+#include "cutlass/epilogue/warp/tile_iterator_simt.h"
 #include "cutlass/epilogue/warp/interleaved_tile_iterator_simt.h"
 
 #include "cutlass/epilogue/threadblock/bias_tile_iterator.h"
 #include "cutlass/epilogue/threadblock/convolution_epilogue.h"
 #include "cutlass/epilogue/threadblock/epilogue.h"
+#include "cutlass/epilogue/threadblock/shared_load_iterator.h"
 #include "cutlass/epilogue/threadblock/interleaved_shared_load_iterator.h"
 #include "cutlass/epilogue/threadblock/tensor_predicated_tile_iterator.h"
-
 #include "cutlass/epilogue/warp/interleaved_simt_policy.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -236,6 +238,71 @@ struct ConvolutionEpilogueSimt<Shape_, layout::TensorNCxHWx<Interleaved>,
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
+template <typename Shape_, typename WarpMmaSimt_, typename OutputOp_,
+          int ElementsPerAccess>
+struct ConvolutionEpilogueSimt<Shape_, layout::TensorNCHW, layout::TensorNCHW,
+                               WarpMmaSimt_, OutputOp_, ElementsPerAccess> {
+    using Shape = Shape_;
+    using WarpMmaSimt = WarpMmaSimt_;
+    using OutputOp = OutputOp_;
+    static int const kElementsPerAccess = ElementsPerAccess;
+    static const int kPartitionsK = Shape::kK / WarpMmaSimt::Shape::kK;
+
+    using ElementOutput = typename OutputOp::ElementOutput;
+    using LayoutDst = layout::TensorNCHW;
+    using ElementBias = typename OutputOp::ElementBias;
+    using LayoutBias = layout::TensorNCHW;
+    using ElementAccumulator = typename WarpMmaSimt::ElementC;
+
+    //
+    // Thread map
+    //
+
+    using OutputTileThreadMap =
+            typename cutlass::epilogue::threadblock::DefaultThreadMapSimt<
+                    Shape, typename WarpMmaSimt::Shape,
+                    typename WarpMmaSimt::Policy, kPartitionsK, ElementOutput,
+                    kElementsPerAccess>::Type;
+
+    using OutputTileIterator =
+            cutlass::epilogue::threadblock::TensorPredicatedTileIterator<
+                    OutputTileThreadMap, LayoutDst, ElementOutput>;
+
+    using AccumulatorFragmentIterator =
+            cutlass::epilogue::warp::FragmentIteratorSimt<
+                    typename WarpMmaSimt::Shape,
+                    typename WarpMmaSimt::ThreadMma,
+                    typename WarpMmaSimt::LayoutC,
+                    typename WarpMmaSimt::Policy>;
+
+    using WarpTileIterator =
+            cutlass::epilogue::warp::TileIteratorSimt<
+                    typename WarpMmaSimt::Shape,
+                    typename WarpMmaSimt::ThreadMma, ElementAccumulator,
+                    typename WarpMmaSimt::LayoutC,
+                    typename WarpMmaSimt::Policy>;
+
+    using SharedLoadIterator =
+            cutlass::epilogue::threadblock::SharedLoadIterator<
+                    typename OutputTileThreadMap::CompactedThreadMap,
+                    ElementAccumulator>;
+
+    using BiasTileIterator = cutlass::epilogue::threadblock::
+            PerChannelBiasPredicatedTileIterator<
+                    OutputTileThreadMap, LayoutBias, ElementBias,
+                    32 / sizeof_bits<ElementBias>::value>;
+
+    /// Hard-coded padding elements added
+    using Padding = typename WarpTileIterator::Padding;
+
+    //
+    // Define the epilogue
+    //
+    using Epilogue = cutlass::epilogue::threadblock::ConvolutionEpilogue<
+            Shape, LayoutDst, kPartitionsK, WarpMmaSimt, OutputTileIterator,
+            AccumulatorFragmentIterator, WarpTileIterator, SharedLoadIterator,
+            BiasTileIterator, OutputOp, Padding>;
+};
 }  // namespace threadblock
 }  // namespace epilogue
 }  // namespace cutlass

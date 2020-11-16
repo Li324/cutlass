@@ -84,6 +84,43 @@ struct TensorEqualsFunc {
     operator bool() const { return result; }
 };
 
+template <typename Layout>  ///< Layout function
+struct TensorEqualsFunc<float, Layout> {
+    using Element = float;
+    //
+    // Data members
+    //
+
+    TensorView<Element, Layout> lhs;
+    TensorView<Element, Layout> rhs;
+    bool result;
+
+    /// Ctor
+    TensorEqualsFunc() : result(true) {}
+
+    /// Ctor
+    TensorEqualsFunc(TensorView<Element, Layout> const& lhs_,
+                     TensorView<Element, Layout> const& rhs_)
+            : lhs(lhs_), rhs(rhs_), result(true) {}
+
+    /// Visits a coordinate
+    void operator()(Coord<Layout::kRank> const& coord) {
+        Element lhs_ = lhs.at(coord);
+        Element rhs_ = rhs.at(coord);
+
+        auto numerator = lhs_ - rhs_;
+        auto denominator =
+                std::max(std::max(std::abs(lhs_), std::abs(rhs_)), 1.f);
+        if (std::abs(numerator / denominator) >= 1e-3) {
+            result = false;
+        }
+    }
+
+    /// Returns true if equal
+    operator bool() const { return result; }
+};
+
+
 }  // namespace detail
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

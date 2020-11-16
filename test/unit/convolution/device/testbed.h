@@ -815,6 +815,59 @@ bool TestConvolution1x1Perf(int iterations = 1, int batch = 64,
     return passed;
 }
 
+template <typename Convolution>
+bool TestDetectionPerf(int iterations = 1, int batch = 16,
+                         bool tensor_op = false) {
+    bool passed = true;
+
+    double problem_alpha[] = {1.0};
+    double problem_beta[] = {-1.0};
+    double problem_gamma[] = {0.0};
+
+    Testbed<Convolution> testbed;
+
+    using ElementCompute =
+            typename Convolution::EpilogueOutputOp::ElementCompute;
+
+    static const cutlass::convolution::ConvType kConvolutionType =
+            Convolution::kConvolutionType;
+    using ConvolutionParameter =
+            cutlass::convolution::ConvParam<kConvolutionType>;
+    std::vector<ConvolutionParameter> args;
+
+    args.emplace_back(ConvolutionParameter{batch, 16, 16, 92, 160, 3, 3, 92,
+                                           160, 1, 1, 3, 3, 1, 1});
+    args.emplace_back(ConvolutionParameter{batch, 16, 4, 92, 160, 3, 3, 92, 160,
+                                           1, 1, 3, 3, 1, 1});
+    args.emplace_back(ConvolutionParameter{batch, 16, 16, 46, 80, 3, 3, 46, 80,
+                                           1, 1, 3, 3, 1, 1});
+    bool verify = true;
+    int cnt = 0;
+    for (auto arg : args) {
+        for (auto alpha : problem_alpha) {
+            for (auto beta : problem_beta) {
+                for (auto gamma : problem_gamma) {
+                    if (tensor_op && (arg.ci() % 32 != 0 || arg.co() % 32 != 0))
+                        continue;
+                    passed = testbed.perf(
+                            arg, cutlass::from_real<ElementCompute>(alpha),
+                            cutlass::from_real<ElementCompute>(beta),
+                            cutlass::from_real<ElementCompute>(gamma),
+                            iterations, verify);
+
+                    cnt++;
+                    if (cnt >= 5)
+                        verify = false;
+                    if (!passed) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+
+    return passed;
+}
 }  // namespace device
 }  // namespace convolution
 }  // namespace test

@@ -158,12 +158,18 @@ void compute_convolution(
                             TensorCoordBias coord_bias(0, 0, 0, oc);
 
                             if (n < N && oc < OC) {
-                               ScalarType intermediate = std::round( 
-                                    alpha * ScalarType(accum[i][j]) +
-                                    beta *
-                                        ScalarType(tensor_bias.at(coord_bias)) +
-                                    gamma * ScalarType(tensor_z.at(coord)));
-                               tensor_dst.at(coord) = convert_op(intermediate);
+                                ScalarType intermediate =
+                                        alpha * ScalarType(accum[i][j]) +
+                                        beta * ScalarType(tensor_bias.at(
+                                                       coord_bias)) +
+                                        gamma * ScalarType(tensor_z.at(coord));
+                                if (cutlass::platform::is_same<ScalarType,
+                                                               float>::value &&
+                                    cutlass::platform::is_same<ElementDst,
+                                                               int8_t>::value) {
+                                    intermediate = std::round(intermediate);
+                                }
+                                tensor_dst.at(coord) = convert_op(intermediate);
                             }
                         }
                     }

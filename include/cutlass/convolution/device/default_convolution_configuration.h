@@ -48,6 +48,9 @@
 #include "cutlass/epilogue/thread/bias_add_linear_combination_clamp.h"
 #include "cutlass/epilogue/thread/bias_add_linear_combination_relu_clamp.h"
 #include "cutlass/epilogue/thread/bias_add_linear_combination_hswish_clamp.h"
+#include "cutlass/epilogue/thread/bias_add_linear_combination.h"
+#include "cutlass/epilogue/thread/bias_add_linear_combination_relu.h"
+#include "cutlass/epilogue/thread/bias_add_linear_combination_hswish.h"
 #include "cutlass/epilogue/thread/linear_combination.h"
 
 ////////////////////////////////////////////////////////////////////////////////

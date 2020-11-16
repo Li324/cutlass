@@ -233,7 +233,10 @@ struct DefaultConvolution<
             arch::Sm50, ThreadblockShape, WarpShape, InstructionShape, Stages,
             Operator, true, NeedLoadFromConstMem>::ThreadblockMma;
 
-    static int const kEpilogueElementsPerAccess = 4;
+    static int const kEpilogueElementsPerAccess =
+            cutlass::platform::is_same<LayoutDst, layout::TensorNCHW>::value
+                    ? 1
+                    : 4;
 
     /// Define the epilogue
     using Epilogue =
