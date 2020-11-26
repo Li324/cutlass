@@ -67,7 +67,8 @@ struct TensorEqualsFunc {
 
     /// Ctor
     TensorEqualsFunc(TensorView<Element, Layout> const& lhs_,
-                     TensorView<Element, Layout> const& rhs_)
+                     TensorView<Element, Layout> const& rhs_,
+                     double /* episilon_ */)
             : lhs(lhs_), rhs(rhs_), result(true) {}
 
     /// Visits a coordinate
@@ -93,15 +94,20 @@ struct TensorEqualsFunc<float, Layout> {
 
     TensorView<Element, Layout> lhs;
     TensorView<Element, Layout> rhs;
+    double episilon;
     bool result;
 
     /// Ctor
-    TensorEqualsFunc() : result(true) {}
+    TensorEqualsFunc() : episilon(1e-4), result(true) {}
+
+    /// Ctor
+    TensorEqualsFunc(double episilon_) : episilon(episilon_), result(true) {}
 
     /// Ctor
     TensorEqualsFunc(TensorView<Element, Layout> const& lhs_,
-                     TensorView<Element, Layout> const& rhs_)
-            : lhs(lhs_), rhs(rhs_), result(true) {}
+                     TensorView<Element, Layout> const& rhs_,
+                     double episilon_ = 1e-4)
+            : lhs(lhs_), rhs(rhs_), episilon(episilon_), result(true) {}
 
     /// Visits a coordinate
     void operator()(Coord<Layout::kRank> const& coord) {
@@ -111,7 +117,7 @@ struct TensorEqualsFunc<float, Layout> {
         auto numerator = lhs_ - rhs_;
         auto denominator =
                 std::max(std::max(std::abs(lhs_), std::abs(rhs_)), 1.f);
-        if (std::abs(numerator / denominator) >= 1e-3) {
+        if (std::abs(numerator / denominator) >= episilon) {
             result = false;
         }
     }
@@ -131,13 +137,13 @@ template <
   typename Layout>                ///< Layout function
 bool TensorEquals(
   TensorView<Element, Layout> const &lhs, 
-  TensorView<Element, Layout> const &rhs) {
+  TensorView<Element, Layout> const &rhs, double episilon = 1e-4) {
     // Extents must be identical
     if (lhs.extent() != rhs.extent()) {
         return false;
     }
 
-    detail::TensorEqualsFunc<Element, Layout> func(lhs, rhs);
+    detail::TensorEqualsFunc<Element, Layout> func(lhs, rhs, episilon);
     TensorForEach(lhs.extent(), func);
 
     return bool(func);
