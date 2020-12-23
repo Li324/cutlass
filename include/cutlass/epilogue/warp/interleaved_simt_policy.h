@@ -177,7 +177,7 @@ struct InterleavedSimtPolicy<WarpShape_, Operator_, layout::ColumnMajor,
             kAccessesPerIteration / kColumnAccessesPerIteration;
 
     /// Number of columns per epilogue iteration
-    static int const kColumnsPerIteration = MmaSimtPolicy::WarpShape::kColumns *
+    static int const kColumnsPerIteration = MmaSimtPolicy::WarpShape::kColumn *
                                             MmaSimtPolicy::LaneMmaShape::kN;
 };
 
